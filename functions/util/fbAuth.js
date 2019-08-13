@@ -16,7 +16,8 @@ module.exports = (req, res, next) => {
     .verifyIdToken(idToken)
     .then(decodedToken => {
       req.user = decodedToken;
-      //console.log(decodedToken);
+      // console.log("decoded token");
+      // console.log(decodedToken);
       return db
         .collection("users")
         .where("userId", "==", req.user.uid)
@@ -24,8 +25,8 @@ module.exports = (req, res, next) => {
         .get();
     })
     .then(data => {
-      //console.log(data);
-      req.user.handle = data.docs[0].handle;
+      //   console.log(data.docs[0].data().handle);
+      req.user.handle = data.docs[0].data().handle;
       return next();
     })
     .catch(err => {
