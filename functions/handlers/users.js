@@ -5,7 +5,11 @@ const firebase = require("firebase");
 const firebaseConfig = require("../util/config");
 firebase.initializeApp(firebaseConfig);
 
-const { validateSignupData, validateLoginData } = require("../util/validators");
+const {
+  validateSignupData,
+  validateLoginData,
+  reduceUserDetails
+} = require("../util/validators");
 
 exports.signup = (req, res) => {
   const newUser = {
@@ -170,11 +174,31 @@ exports.uploadImage = (req, res) => {
   const fs = require("fs");
 
   const busboy = new BusBoy({ headers: req.headers });
-
+  // console.log(req.headers);
   let imageToBeUploaded = {};
   let imageFileName;
 
+  // busboy.on("file", function(fieldname, file, filename, encoding, mimetype) {
+  //   console.log(
+  //     "File [" +
+  //       fieldname +
+  //       "]: filename: " +
+  //       filename +
+  //       ", encoding: " +
+  //       encoding +
+  //       ", mimetype: " +
+  //       mimetype
+  //   );
+  //   file.on("data", function(data) {
+  //     console.log("File [" + fieldname + "] got " + data.length + " bytes");
+  //   });
+  //   file.on("end", function() {
+  //     console.log("File [" + fieldname + "] Finished");
+  //   });
+  // });
+
   busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+    console.log("waqas");
     console.log(fieldname, file, filename, encoding, mimetype);
     if (mimetype !== "image/jpeg" && mimetype !== "image/png") {
       return res.status(400).json({ error: "Wrong file type submitted" });
@@ -187,8 +211,12 @@ exports.uploadImage = (req, res) => {
     ).toString()}.${imageExtension}`;
     const filepath = path.join(os.tmpdir(), imageFileName);
     imageToBeUploaded = { filepath, mimetype };
+    file.on("error", err => {
+      console.log({ error: err });
+    });
     file.pipe(fs.createWriteStream(filepath));
   });
+
   busboy.on("finish", () => {
     admin
       .storage()
@@ -210,10 +238,25 @@ exports.uploadImage = (req, res) => {
       .then(() => {
         return res.json({ message: "image uploaded successfully" });
       })
-      .catch(err => {
-        console.error(err);
+      .catch(error => {
+        console.error(error);
         return res.status(500).json({ error: "something went wrong" });
       });
   });
-  //busboy.end(req.rawBody);
+  busboy.end(req.rawBody);
+};
+
+exports.addUserDetails = (req, res) => {
+  //console.log(req.user);
+  let userDetails = reduceUserDetails(req.body);
+
+  db.doc(`/users/${req.user.handle}`)
+    .update(userDetails)
+    .then(() => {
+      return res.json({ message: "Details added successfully" });
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: err.code });
+    });
 };
